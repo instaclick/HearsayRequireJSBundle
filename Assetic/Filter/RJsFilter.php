@@ -131,9 +131,9 @@ class RJsFilter extends BaseNodeFilter
         $input  = tempnam(sys_get_temp_dir(), 'input');
         $output = tempnam(sys_get_temp_dir(), 'output');
 
-        file_put_contents($input . '.js', $asset->getContent());
+        file_put_contents($input, $asset->getContent());
 
-        $buildProfile = $this->makeBuildProfile($input, $output);
+        $buildProfile = $this->makeBuildProfile($input, $output, $asset);
 
         $pb->add('-o')->add($buildProfile);
 
@@ -221,17 +221,60 @@ class RJsFilter extends BaseNodeFilter
     {
         $this->shim = $shim;
     }
+    
+    /**
+     * Returns true if the configuration has defined several output modules, instead of just one
+     * 
+     * @return type
+     */
+    public function hasModules()
+    {
+      return isset($this->options['modules']);
+    }
+    
+    /**
+     * Returns the matching module name for the building asset
+     * 
+     * @param \Assetic\Asset\AssetInterface $asset
+     * @return string
+     */
+    public function getNameForAsset(AssetInterface $asset)
+    {
+      $path = null;
+      $name = null;
+      
+      $sourceLocation = realpath($asset->getSourceRoot().DIRECTORY_SEPARATOR.$asset->getSourcePath());
+      
+      // Find the correct path setting for this asset
+      foreach ($this->paths as $key => $value) {
+        if (strpos($sourceLocation, realpath($value)) === 0){
+          $path = $key;
+          break;
+        }
+      }
+      
+      // Match the path with the name of the correct module
+      foreach ($this->options['modules'] as $module) {
+        if (strpos($module['name'], $path) === 0) {
+          $name = $module['name'];
+          break;
+        }
+      }
+      
+      return $name;
+    }
 
     /**
      * Makes the build profile's file
      *
      * @param  string $input  The input file
      * @param  string $output The output file
+     * @param  AssetInterface $asset The AssetInterface
      * @return string         Returns the build profile's file name
      */
-    protected function makeBuildProfile($input, $output)
+    protected function makeBuildProfile($input, $output, AssetInterface $asset)
     {
-        $buildProfile = tempnam(sys_get_temp_dir(), 'build_profile') . '.js';
+        $buildProfile = tempnam(sys_get_temp_dir(), 'build_profile');
 
         $name = md5($input);
 
@@ -272,7 +315,21 @@ class RJsFilter extends BaseNodeFilter
 
             $content->$option = $value;
         }
-
+        
+        // If the configuration specifies several output modules, override the name option so it fits the currently building asset, and unset the modules definition from the build config
+        if ($this->hasModules()) {
+            $content->name = $this->getNameForAsset($asset);
+            // Loop over 
+            foreach ($this->options['modules'] as $module) {
+                if ($module['name'] == $content->name) {
+                    foreach ($module as $key => $value) {
+                        $content->$key = $value;
+                    }
+                }
+            }
+            unset($content->modules);
+        }
+        
         file_put_contents($buildProfile, '(' . json_encode($content) . ')');
 
         return $buildProfile;
