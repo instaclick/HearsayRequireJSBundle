@@ -1,5 +1,5 @@
 {
-    "name": "hearsay/require-js-bundle",
+    "name": "instaclick/require-js-bundle",
     "description": "This bundle provides integration of the RequireJS library into Symfony2",
     "type": "symfony-bundle",
     "keywords": [
