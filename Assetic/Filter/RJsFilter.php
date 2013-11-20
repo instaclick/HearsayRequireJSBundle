@@ -240,28 +240,30 @@ class RJsFilter extends BaseNodeFilter
      */
     public function getNameForAsset(AssetInterface $asset)
     {
-      $path = null;
-      $name = null;
+        $path = null;
+        $name = null;
       
-      $sourceLocation = realpath($asset->getSourceRoot().DIRECTORY_SEPARATOR.$asset->getSourcePath());
-      
-      // Find the correct path setting for this asset
-      foreach ($this->paths as $key => $value) {
-        if (strpos($sourceLocation, realpath($value)) === 0){
-          $path = $key;
-          break;
+        $sourceLocation = realpath($asset->getSourceRoot().DIRECTORY_SEPARATOR.$asset->getSourcePath());
+
+        foreach ($this->paths as $key => $value) {
+            if (strpos($sourceLocation, realpath($value)) === 0){
+
+                $path = $key;
+
+                break;
+            }
         }
-      }
-      
-      // Match the path with the name of the correct module
-      foreach ($this->options['modules'] as $module) {
-        if (strpos($module['name'], $path) === 0) {
-          $name = $module['name'];
-          break;
+
+        foreach ($this->options['modules'] as $module) {
+            $realModuleName = str_replace($path, $this->paths[$path] , $module['name']);
+
+            if (strpos($sourceLocation, $realModuleName) === 0) {
+                $name = $module['name'];
+                break;
+            }
         }
-      }
-      
-      return $name;
+
+        return $name;
     }
 
     /**
